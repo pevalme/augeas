@@ -31,8 +31,11 @@
 #include <string.h>
 #include <getopt.h>
 #include <stdlib.h>
+#include <limits.h>
 
 #include "fa.h"
+
+#define UCHAR_NUM (UCHAR_MAX+1)
 
 const char *progname;
 
@@ -46,7 +49,7 @@ static void usage(void) {
   fprintf(stderr, "the minimized regexp.\n");
   fprintf(stderr, "\nOptions:\n\n");
   fprintf(stderr, "  -o OPERATION       one of : show concat union intersect\n");
-  fprintf(stderr, "                              complement minus example\n");
+  fprintf(stderr, "                              complement minus example export\n");
   fprintf(stderr, "  -f DOT_FILE        Path of output .dot file\n");
   fprintf(stderr, "  -n                 do not minimize resulting finite automaton\n");
 
@@ -193,8 +196,34 @@ int main (int argc, char **argv) {
     char* word = NULL;
     size_t word_len = 0;
     fa_compile(argv[optind], strlen(argv[optind]), &fa_result);
+
     fa_example(fa_result, &word, &word_len);
     printf("Example word = %s\n", word);
+
+  } else if (!strcmp(operation, "export")) {
+
+    if (nb_regexp != 1) {
+      fprintf(stderr,"Please specify one regexp for operation example");
+      return 1;
+    }
+
+    fa_compile(argv[optind], strlen(argv[optind]), &fa_result);
+
+    FA_EXPORT export = NULL;
+    int fs = 0, ns, i;
+    int s1, s2, l;
+    ns = fa_export(fa_result, &export, &fs, 0);
+    printf("Final state: %d\n", fs);
+    printf("Number of states: %d\n",ns);
+
+    for (i = 0; i <= ns * ns * UCHAR_NUM; i++) {
+      if (export[i] == 1) {
+        l = i % UCHAR_NUM;
+        s2 = (i % (ns * UCHAR_NUM)) / UCHAR_NUM;
+        s1 = (i - (s2 * UCHAR_NUM) - l)/(UCHAR_NUM * ns);
+        printf("%c(%d): %d → %d\n", l, l, s1, s2);
+      }
+    }
 
   }
 
@@ -210,6 +239,7 @@ int main (int argc, char **argv) {
 
     fa_dot(fd, fa_result);
     fclose(fd);
+
   } else {
     int r;
     char *rx;

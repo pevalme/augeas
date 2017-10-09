@@ -53,6 +53,9 @@ enum fa_minimization_algorithms {
  */
 extern int fa_minimization_algorithm;
 
+/* Simple data structure defining the exported automata bitarray-likewise*/
+typedef char* FA_EXPORT; 
+
 /* Unless otherwise mentioned, automata passed into routines are never
  * modified. It is the responsibility of the caller to free automata
  * returned by any of these routines when they are no longer needed.
@@ -271,6 +274,18 @@ int fa_expand_nocase(const char *regexp, size_t regexp_len,
  * memory, and -2 if FA has more than LIMIT words.
  */
 int fa_enumerate(struct fa *fa, int limit, char ***words);
+
+/* Exports the input FA as a bitarray such that:
+ * (*export)[i,j,k] = 1 iff an edge i → j is labeled by k.
+ *
+ * [i,j,k] = [i * num_states * UCHAR_NUM + j * UCHAR + k]
+ *
+ * If reuse is set to 1, the FA will not be modified. Otherwise, the hash
+ * value associated to each state will be modified.
+ *
+ * Return the number of states of the automaton on success, -1 otherwise.
+ */
+int fa_export(struct fa *fa, FA_EXPORT *export, int *final_state, char reuse);
 
 #endif
 
