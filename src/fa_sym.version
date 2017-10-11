@@ -33,4 +33,5 @@ FA_1.2.0 {
 FA_1.4.0 {
       fa_enumerate;
       fa_export;
+      fa_json;
 } FA_1.2.0;

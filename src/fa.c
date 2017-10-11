@@ -4513,6 +4513,61 @@ void fa_dot(FILE *out, struct fa *fa) {
     fprintf(out, "}\n");
 }
 
+void fa_json(FILE *out, struct fa *fa) {
+    int *list_hashes;
+    int list_size = 100;
+    int num_states = 0;
+    int it;
+    char first = true;
+
+    fprintf(out,"{\n\t\"final\": [");
+
+    list_hashes = (int *)malloc(sizeof(int) * list_size);
+
+    list_for_each(s, fa->initial) {
+        if (num_states == list_size - 1){
+            list_size += list_size;
+            list_hashes = realloc(list_hashes, list_size);
+        }
+        // Store hash value
+        list_hashes[num_states] = s->hash;
+        // We use the hashes to map states to Z_{num_states}
+        s->hash = num_states++;
+        if (s->accept) {
+            if (!first) fprintf(out, ", %ld", s->hash);
+            else fprintf(out,"%ld", s->hash);
+            first = false;
+        }
+    }
+
+    fprintf(out, "],\n\t\"deterministic\": %d,\n\t\"transitions\": [\n", fa->deterministic ? 1 : 0);
+
+    struct re_str str;
+    MEMZERO(&str, 1);
+    first = true;
+    list_for_each(s, fa->initial) {
+        for_each_trans(t, s) {
+            if (!first) fprintf(out, ",\n");
+            first = false; 
+            fprintf(out, "\t\t{ \"from\": %ld, \"to\": %ld, \"on\": \"",s->hash, t->to->hash);
+            print_char(out, t->min);
+            if (t->min != t->max) {
+                fputc('-', out);
+                print_char(out, t->max);
+            }
+            fprintf(out, "\" }");
+        }
+    }
+
+    fprintf(out,"\n\t]\n}");
+
+    // Restoring hash values to leave the FA structure untouched
+    it = 0;
+    list_for_each(s, fa->initial) {
+         s->hash = list_hashes[it++];
+    }
+}
+
 int fa_export(struct fa *fa, FA_EXPORT *export, int *final_state, char reuse) {
     int *list_hashes;
     int list_size = 100;
@@ -4559,36 +4614,20 @@ int fa_export(struct fa *fa, FA_EXPORT *export, int *final_state, char reuse) {
     list_for_each(s, fa->initial) {
         for_each_trans(t, s) {
             if (t->to->accept) {
-            aux = s->hash * ns_al + fs * UCHAR_NUM;
-                if (fa->trans_re) {
-                    re_as_string(t->re, &str);
-                    for (int i=0; i < str.len; i++) {
-                        (*export)[aux + str.rx[i]] = 1;
-                    }
-                    release_re_str(&str);
-                } else {
-                    (*export)[aux + t->min] = 1;
-                    if (t->min != t->max) {
-                        for (it = t->min + 1; it <= t->max; it++) {
-                            (*export)[aux + it] = 1;
-                        }
+                aux = s->hash * ns_al + fs * UCHAR_NUM;
+                (*export)[aux + t->min] = 1;
+                if (t->min != t->max) {
+                    for (it = t->min + 1; it <= t->max; it++) {
+                        (*export)[aux + it] = 1;
                     }
                 }
             }
             if (t->to->tused != 0 && t->to->hash != fs) {
                 aux = s->hash * ns_al + t->to->hash * UCHAR_NUM;
-                if (fa->trans_re) {
-                    re_as_string(t->re, &str);
-                    for (int i=0; i < str.len; i++) {
-                        (*export)[aux + str.rx[i]] = 1;
-                    }
-                    release_re_str(&str);
-                } else {
-                    (*export)[aux + t->min] = 1;
-                    if (t->min != t->max) {
-                        for (it = t->min + 1; it <= t->max; it++) {
-                            (*export)[aux + it] = 1;
-                        }
+                (*export)[aux + t->min] = 1;
+                if (t->min != t->max) {
+                    for (it = t->min + 1; it <= t->max; it++) {
+                        (*export)[aux + it] = 1;
                     }
                 }
             }

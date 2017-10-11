@@ -48,7 +48,7 @@ static void usage(void) {
   fprintf(stderr, "\nCompile REGEXP and apply operation to them. By default, just print\n");
   fprintf(stderr, "the minimized regexp.\n");
   fprintf(stderr, "\nOptions:\n\n");
-  fprintf(stderr, "  -o OPERATION       one of : show concat union intersect\n");
+  fprintf(stderr, "  -o OPERATION       one of : show concat union intersect json\n");
   fprintf(stderr, "                              complement minus example export\n");
   fprintf(stderr, "  -f DOT_FILE        Path of output .dot file\n");
   fprintf(stderr, "  -n                 do not minimize resulting finite automaton\n");
@@ -199,6 +199,32 @@ int main (int argc, char **argv) {
 
     fa_example(fa_result, &word, &word_len);
     printf("Example word = %s\n", word);
+
+  } else if (!strcmp(operation, "json")) {
+    if (nb_regexp != 1) {
+      fprintf(stderr,"Please specify one regexp for operation example");
+      return 1;
+    }
+
+    fa_compile(argv[optind], strlen(argv[optind]), &fa_result);
+
+    if (reduce) {
+      fa_minimize(fa_result);
+    }
+
+    if (file_output != NULL) {
+      if ((fd = fopen(file_output, "w")) == NULL) {
+        fprintf(stderr, "Error while opening file %s \n", file_output);
+        return 1;
+      }
+
+      fa_json(fd, fa_result);
+      fclose(fd);
+    } else {
+      fprintf(stderr, "You must specify a file to write in");
+    }
+
+    return 0;
 
   } else if (!strcmp(operation, "export")) {
 

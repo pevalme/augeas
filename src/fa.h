@@ -287,6 +287,9 @@ int fa_enumerate(struct fa *fa, int limit, char ***words);
  */
 int fa_export(struct fa *fa, FA_EXPORT *export, int *final_state, char reuse);
 
+/* Print FA to OUT as a JSON file. State 0 is always the initial one */
+void fa_json(FILE *out, struct fa *fa);
+
 #endif
 
 
