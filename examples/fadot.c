@@ -49,7 +49,7 @@ static void usage(void) {
   fprintf(stderr, "the minimized regexp.\n");
   fprintf(stderr, "\nOptions:\n\n");
   fprintf(stderr, "  -o OPERATION       one of : show concat union intersect json\n");
-  fprintf(stderr, "                              complement minus example export\n");
+  fprintf(stderr, "                              complement minus example exportB exportL\n");
   fprintf(stderr, "  -f DOT_FILE        Path of output .dot file\n");
   fprintf(stderr, "  -n                 do not minimize resulting finite automaton\n");
 
@@ -226,7 +226,54 @@ int main (int argc, char **argv) {
 
     return 0;
 
-  } else if (!strcmp(operation, "export")) {
+  } else if (!strcmp(operation, "exportL")) { 
+    if (nb_regexp != 1) {
+      fprintf(stderr,"Please specify one regexp for operation example");
+      return 1;
+    }
+
+    fa_compile(argv[optind], strlen(argv[optind]), &fa_result);
+
+    if (reduce) {
+      fa_minimize(fa_result);
+    }
+
+    struct FA_EXPORT export;
+    struct FA_EXPORT *aux;
+    int i;
+
+    i = fa_export_list(fa_result, &export, 0);
+
+    if (i == 0) printf("NFA\n");
+    else if (i == 1) printf("DFA\n");
+    else fprintf(stderr, "Some error ocurred\n");
+
+    printf("\nFrom state %d (final = %s):\n", export.state, export.final == 1 ? "true" : "false");
+    for (i = 0; i < export.num_trans; i++) {
+      if (export.trans[i].min == export.trans[i].max)
+        printf("     to: %d, label: %d\n", export.trans[i].end, export.trans[i].min);
+      else
+        printf("     to: %d, label: %d-%d\n", export.trans[i].end, export.trans[i].min,export.trans[i].max);
+    }
+
+    aux = export.next;
+
+    while (aux != NULL) {
+      printf("\nFrom state %d (final = %s):\n", aux->state, aux->final == 1 ? "true" : "false");
+      for (i = 0; i < aux->num_trans; i++) {
+        if (aux->trans[i].min == aux->trans[i].max)
+          printf("     to: %d, label: %d\n", aux->trans[i].end, aux->trans[i].min);
+        else
+          printf("     to: %d, label: %d-%d\n", aux->trans[i].end, aux->trans[i].min,aux->trans[i].max);
+      }
+      aux = aux->next;
+    }
+
+    fa_export_list_free(&export);
+
+    return 0;
+
+  } else if (!strcmp(operation, "exportB")) {
 
     if (nb_regexp != 1) {
       fprintf(stderr,"Please specify one regexp for operation example");
@@ -235,22 +282,28 @@ int main (int argc, char **argv) {
 
     fa_compile(argv[optind], strlen(argv[optind]), &fa_result);
 
-    FA_EXPORT export = NULL;
-    int fs = 0, ns, i;
-    int s1, s2, l;
-    ns = fa_export(fa_result, &export, &fs, 0);
-    printf("Final state: %d\n", fs);
-    printf("Number of states: %d\n",ns);
+    if (reduce) {
+      fa_minimize(fa_result);
+    }
 
+    char *export = NULL;
+    int final_states;
+    int ns, i;
+    int s1, s2, l;
+    ns = fa_export_bytearray(fa_result, &export, &final_states, 0);
+    printf("Number of states: %d\n",ns);
+    printf("Final state: %d\n", final_states);
+    printf("Non-zero positions\n");
     for (i = 0; i <= ns * ns * UCHAR_NUM; i++) {
       if (export[i] == 1) {
         l = i % UCHAR_NUM;
         s2 = (i % (ns * UCHAR_NUM)) / UCHAR_NUM;
         s1 = (i - (s2 * UCHAR_NUM) - l)/(UCHAR_NUM * ns);
-        printf("%c(%d): %d → %d\n", l, l, s1, s2);
+        printf("%d → State: %d, to: %d, label: %d\n", i, s1, s2, l);
       }
     }
 
+    return 0;
   }
 
   if (reduce) {

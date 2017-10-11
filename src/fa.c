@@ -4676,7 +4676,7 @@ int fa_export_bytearray(struct fa *fa, char **export, int *final_state, char reu
                 flag = false;
             }
         }
-        if (flag) fs = num_states;
+        if (flag) fs = num_states++;
     }
 
     (*export) = (char*)calloc(num_states * num_states * UCHAR_NUM, sizeof(char));
