@@ -53,8 +53,18 @@ enum fa_minimization_algorithms {
  */
 extern int fa_minimization_algorithm;
 
-/* Simple data structure defining the exported automata bitarray-likewise*/
-typedef char* FA_EXPORT; 
+/* Data structure defining the exported automata as a list*/
+struct FA_EXPORT {
+    int state; // Current state
+    char final; // Is final?
+    struct FA_EXPORT *next; // Next state in the list
+    int num_trans; // Number of outgoing transitions of the current state
+    struct EDGE *trans; // [destination state, min label, max label]
+};
+
+struct EDGE {
+    int end, min, max;
+};
 
 /* Unless otherwise mentioned, automata passed into routines are never
  * modified. It is the responsibility of the caller to free automata
@@ -275,7 +285,7 @@ int fa_expand_nocase(const char *regexp, size_t regexp_len,
  */
 int fa_enumerate(struct fa *fa, int limit, char ***words);
 
-/* Exports the input FA as a bitarray such that:
+/* Exports the input FA as a bytearray such that:
  * (*export)[i,j,k] = 1 iff an edge i → j is labeled by k.
  *
  * [i,j,k] = [i * num_states * UCHAR_NUM + j * UCHAR + k]
@@ -285,7 +295,20 @@ int fa_enumerate(struct fa *fa, int limit, char ***words);
  *
  * Return the number of states of the automaton on success, -1 otherwise.
  */
-int fa_export(struct fa *fa, FA_EXPORT *export, int *final_state, char reuse);
+int fa_export_bytearray(struct fa *fa, char **export, int *final_states, char reuse);
+
+/* Exports the input FA as a list such that each element represents a
+ * state and the list of outgoing transitions.
+ *
+ * If reuse is set to 1, the FA will not be modified. Otherwise, the hash
+ * value associated to each state will be modified.
+ *
+ * Return 1 if FA is deterministic, 0 otherwise.
+ */
+int fa_export_list(struct fa *fa, struct FA_EXPORT *export, char reuse);
+
+/* Free all memory used by FA_EXPORT */
+void fa_export_list_free(struct FA_EXPORT *export);
 
 /* Print FA to OUT as a JSON file. State 0 is always the initial one */
 void fa_json(FILE *out, struct fa *fa);

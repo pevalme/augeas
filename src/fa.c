@@ -4542,8 +4542,6 @@ void fa_json(FILE *out, struct fa *fa) {
 
     fprintf(out, "],\n\t\"deterministic\": %d,\n\t\"transitions\": [\n", fa->deterministic ? 1 : 0);
 
-    struct re_str str;
-    MEMZERO(&str, 1);
     first = true;
     list_for_each(s, fa->initial) {
         for_each_trans(t, s) {
@@ -4568,7 +4566,84 @@ void fa_json(FILE *out, struct fa *fa) {
     }
 }
 
-int fa_export(struct fa *fa, FA_EXPORT *export, int *final_state, char reuse) {
+int fa_export_list(struct fa *fa, struct FA_EXPORT *export, char reuse) {
+    int *list_hashes;
+    int list_size = 100;
+    int num_states = 0;
+    int it;
+    struct FA_EXPORT *aux = export;
+
+    list_hashes = (int *)malloc(sizeof(int) * list_size);
+
+    list_for_each(s, fa->initial) {
+        if (reuse) {
+            if (num_states == list_size - 1){
+                list_size += list_size;
+                list_hashes = realloc(list_hashes, list_size);
+            }
+            // Store hash value
+            list_hashes[num_states] = s->hash;
+        }
+        // We use the hashes to map states to Z_{num_states}
+        s->hash = num_states++;
+    }
+
+    list_for_each(s, fa->initial) {
+        aux->state = s->hash;
+        aux->final = s->accept;
+        aux->num_trans = s->tused;
+
+        aux->trans = (struct EDGE*)malloc(sizeof(struct EDGE) * s->tused);
+        if (aux->trans == NULL) {
+            fa_export_list_free(export);
+            return -1;
+        }
+        it = 0;
+        for_each_trans(t, s) {
+            aux->trans[it].end = t->to->hash; 
+            aux->trans[it].min = t->min;
+            aux->trans[it].max = t->max;
+            it++;
+        }
+
+        if (s->next != NULL) {
+            aux->next = (struct FA_EXPORT *) malloc(sizeof(struct FA_EXPORT));
+            if (aux->next == NULL) {
+                fa_export_list_free(export);
+                return -1;
+            }
+            aux = aux->next;
+        } else aux->next = NULL;
+    }
+
+    // Restoring hash values to leave the FA structure untouched
+    if (reuse) {
+        it = 0;
+        list_for_each(s, fa->initial) {
+             s->hash = list_hashes[it++];
+        }
+    }
+
+    return fa->deterministic ? 1 : 0;
+}
+
+void fa_export_list_free(struct FA_EXPORT *export) {
+    struct FA_EXPORT *aux;
+
+    if (export == NULL) return;
+
+    free(export->trans);
+    export = export->next;
+
+    while (export != NULL) {
+        free(export->trans);
+        aux = export->next;
+        free(export);
+        export = aux;
+    }
+}
+
+int fa_export_bytearray(struct fa *fa, char **export, int *final_state, char reuse) {
     int *list_hashes;
     int list_size = 100;
     int num_states = 0;
@@ -4604,7 +4679,7 @@ int fa_export(struct fa *fa, FA_EXPORT *export, int *final_state, char reuse) {
         if (flag) fs = num_states;
     }
 
-    (*export) = (FA_EXPORT)calloc(num_states * num_states * UCHAR_NUM, sizeof(char));
+    (*export) = (char*)calloc(num_states * num_states * UCHAR_NUM, sizeof(char));
     if ((*export) == NULL) return -1;
 
     ns_al = num_states * UCHAR_NUM;
