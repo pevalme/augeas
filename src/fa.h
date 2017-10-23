@@ -25,6 +25,8 @@
 
 #include <stdio.h>
 #include <regex.h>
+#include <stdbool.h>
+#include <stdint.h>
 
 /* The type for a finite automaton. */
 struct fa;
@@ -54,16 +56,16 @@ enum fa_minimization_algorithms {
 extern int fa_minimization_algorithm;
 
 /* Data structure defining the exported automata as a list*/
-struct FA_EXPORT {
-    int state; // Current state
-    char final; // Is final?
-    struct FA_EXPORT *next; // Next state in the list
-    int num_trans; // Number of outgoing transitions of the current state
-    struct EDGE *trans; // [destination state, min label, max label]
+struct fa_export {
+    bool final; // Is final?
+    struct fa_export *next; // Next state in the list
+    uint32_t num_trans; // Number of outgoing transitions of the current state
+    struct fa_edge *trans; // [destination state, min label, max label]
 };
 
-struct EDGE {
-    int end, min, max;
+struct fa_edge {
+    struct fa_export *end;
+    uint32_t min, max;
 };
 
 /* Unless otherwise mentioned, automata passed into routines are never
@@ -305,10 +307,10 @@ int fa_export_bytearray(struct fa *fa, char **export, int *final_states, char re
  *
  * Return 1 if FA is deterministic, 0 otherwise.
  */
-int fa_export_list(struct fa *fa, struct FA_EXPORT *export, char reuse);
+int fa_export_list(struct fa *fa, struct fa_export *export, char reuse);
 
-/* Free all memory used by FA_EXPORT */
-void fa_export_list_free(struct FA_EXPORT *export);
+/* Free all memory used by fa_export */
+void fa_export_list_free(struct fa_export *export);
 
 /* Print FA to OUT as a JSON file. State 0 is always the initial one */
 void fa_json(FILE *out, struct fa *fa);

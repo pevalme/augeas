@@ -238,8 +238,8 @@ int main (int argc, char **argv) {
       fa_minimize(fa_result);
     }
 
-    struct FA_EXPORT export;
-    struct FA_EXPORT *aux;
+    struct fa_export export;
+    struct fa_export *aux;
     int i;
 
     i = fa_export_list(fa_result, &export, 0);
@@ -248,23 +248,23 @@ int main (int argc, char **argv) {
     else if (i == 1) printf("DFA\n");
     else fprintf(stderr, "Some error ocurred\n");
 
-    printf("\nFrom state %d (final = %s):\n", export.state, export.final == 1 ? "true" : "false");
+    printf("\nFrom state %p (final = %s):\n", &export, export.final == 1 ? "true" : "false");
     for (i = 0; i < export.num_trans; i++) {
       if (export.trans[i].min == export.trans[i].max)
-        printf("     to: %d, label: %d\n", export.trans[i].end, export.trans[i].min);
+        printf("     to: %p, label: %d\n", export.trans[i].end, export.trans[i].min);
       else
-        printf("     to: %d, label: %d-%d\n", export.trans[i].end, export.trans[i].min,export.trans[i].max);
+        printf("     to: %p, label: %d-%d\n", export.trans[i].end, export.trans[i].min,export.trans[i].max);
     }
 
     aux = export.next;
 
     while (aux != NULL) {
-      printf("\nFrom state %d (final = %s):\n", aux->state, aux->final == 1 ? "true" : "false");
+      printf("\nFrom state %p (final = %s):\n", aux, aux->final == 1 ? "true" : "false");
       for (i = 0; i < aux->num_trans; i++) {
         if (aux->trans[i].min == aux->trans[i].max)
-          printf("     to: %d, label: %d\n", aux->trans[i].end, aux->trans[i].min);
+          printf("     to: %p, label: %d\n", aux->trans[i].end, aux->trans[i].min);
         else
-          printf("     to: %d, label: %d-%d\n", aux->trans[i].end, aux->trans[i].min,aux->trans[i].max);
+          printf("     to: %p, label: %d-%d\n", aux->trans[i].end, aux->trans[i].min,aux->trans[i].max);
       }
       aux = aux->next;
     }
