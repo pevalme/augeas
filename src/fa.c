@@ -4567,25 +4567,55 @@ void fa_json(FILE *out, struct fa *fa) {
 }
 
 int fa_export_list(struct fa *fa, struct fa_export *export, char reuse) {
-    int *list_hashes;
+    int *list_hashes = NULL;
+    void **list_pointers = NULL;
     int list_size = 100;
     int num_states = 0;
     int it;
     struct fa_export *aux = export;
 
     list_hashes = (int *)malloc(sizeof(int) * list_size);
+    if (list_hashes == NULL) return -1;
 
+    list_pointers = (void **)malloc(sizeof(void*) * list_size);
+    if (list_pointers == NULL) {
+        free(list_hashes);
+        return -1;
+    }
+
+    // Allocate memory for new states 
     list_for_each(s, fa->initial) {
         if (reuse) {
             if (num_states == list_size - 1){
                 list_size += list_size;
                 list_hashes = realloc(list_hashes, list_size);
+                list_pointers = realloc(list_pointers, list_size);
             }
             // Store hash value
             list_hashes[num_states] = s->hash;
         }
         // We use the hashes to map pointers of fa to pointers of fa_export
-        s->hash = (struct fa_export *) malloc(sizeof(struct fa_export));;
+        s->hash = num_states;
+
+        if (num_states != 0) list_pointers[num_states++] = (struct fa_export *) malloc(sizeof(struct fa_export));
+        else list_pointers[num_states++] = export;
+
+        // If error, free memory and restore hashes
+        if (list_pointers[num_states-1] == NULL) {
+            for(it = 1; it < num_states; it++) free(list_pointers[it]);
+            free(list_pointers);
+            if (reuse) {
+                it = 0;
+                list_for_each(s1, fa->initial) {
+                     s1->hash = list_hashes[it++];
+                     if (it == num_states) break;
+                }
+            }
+
+            free(list_hashes);
+            return -1;
+        }
+
     }
 
     list_for_each(s, fa->initial) {
@@ -4594,16 +4624,30 @@ int fa_export_list(struct fa *fa, struct fa_export *export, char reuse) {
 
         aux->trans = (struct fa_edge*)malloc(sizeof(struct fa_edge) * s->tused);
 
+        // If error, free memory and restore hashes
+        if (aux->trans == NULL) {
+            if (reuse) {
+                it = 0;
+                list_for_each(s1, fa->initial) {
+                     s1->hash = list_hashes[it++];
+                }
+                free(list_hashes);
+            }
+            for(it = 1; it <= num_states; it++) free(list_pointers[it]);
+            free(list_pointers);
+            return -1;
+        }
+
         it = 0;
         for_each_trans(t, s) {
-            aux->trans[it].end = t->to->hash; 
+            aux->trans[it].end = list_pointers[t->to->hash]; 
             aux->trans[it].min = t->min;
             aux->trans[it].max = t->max;
             it++;
         }
 
         if (s->next != NULL) {
-            aux->next = s->next->hash;
+            aux->next = list_pointers[s->next->hash];
             aux = aux->next;
         } else aux->next = NULL;
     }

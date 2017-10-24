@@ -305,7 +305,7 @@ int fa_export_bytearray(struct fa *fa, char **export, int *final_states, char re
  * If reuse is set to 1, the FA will not be modified. Otherwise, the hash
  * value associated to each state will be modified.
  *
- * Return 1 if FA is deterministic, 0 otherwise.
+ * Return 1 if FA is deterministic, 0 if not and -1 in case of error.
  */
 int fa_export_list(struct fa *fa, struct fa_export *export, char reuse);
 

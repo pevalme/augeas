@@ -246,7 +246,10 @@ int main (int argc, char **argv) {
 
     if (i == 0) printf("NFA\n");
     else if (i == 1) printf("DFA\n");
-    else fprintf(stderr, "Some error ocurred\n");
+    else {
+      fprintf(stderr, "Some error ocurred\n");
+      return 1;
+    }
 
     printf("\nFrom state %p (final = %s):\n", &export, export.final == 1 ? "true" : "false");
     for (i = 0; i < export.num_trans; i++) {
