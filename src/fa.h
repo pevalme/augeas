@@ -31,6 +31,9 @@
 /* The type for a finite automaton. */
 struct fa;
 
+/* The type of a state of a finite automaton */
+struct state;
+
 /* Denote some basic automata, used by fa_is_basic and fa_make_basic */
 enum fa_basic {
     FA_EMPTY,        /* Accepts the empty language, i.e. no strings */
@@ -54,19 +57,6 @@ enum fa_minimization_algorithms {
  * Defaults to FA_MIN_HOPCROFT
  */
 extern int fa_minimization_algorithm;
-
-/* Data structure defining the exported automata as a list*/
-struct fa_export {
-    bool final; // Is final?
-    struct fa_export *next; // Next state in the list
-    uint32_t num_trans; // Number of outgoing transitions of the current state
-    struct fa_edge *trans; // [destination state, min label, max label]
-};
-
-struct fa_edge {
-    struct fa_export *end;
-    uint32_t min, max;
-};
 
 /* Unless otherwise mentioned, automata passed into routines are never
  * modified. It is the responsibility of the caller to free automata
@@ -287,33 +277,26 @@ int fa_expand_nocase(const char *regexp, size_t regexp_len,
  */
 int fa_enumerate(struct fa *fa, int limit, char ***words);
 
-/* Exports the input FA as a bytearray such that:
- * (*export)[i,j,k] = 1 iff an edge i → j is labeled by k.
- *
- * [i,j,k] = [i * num_states * UCHAR_NUM + j * UCHAR + k]
- *
- * If reuse is set to 1, the FA will not be modified. Otherwise, the hash
- * value associated to each state will be modified.
- *
- * Return the number of states of the automaton on success, -1 otherwise.
- */
-int fa_export_bytearray(struct fa *fa, char **export, int *final_states, char reuse);
-
-/* Exports the input FA as a list such that each element represents a
- * state and the list of outgoing transitions.
- *
- * If reuse is set to 1, the FA will not be modified. Otherwise, the hash
- * value associated to each state will be modified.
- *
- * Return 1 if FA is deterministic, 0 if not and -1 in case of error.
- */
-int fa_export_list(struct fa *fa, struct fa_export *export, char reuse);
-
-/* Free all memory used by fa_export */
-void fa_export_list_free(struct fa_export *export);
-
 /* Print FA to OUT as a JSON file. State 0 is always the initial one */
 void fa_json(FILE *out, struct fa *fa);
+
+/* Returns 1 if the FA is deterministic and 0 otherwise */
+int fa_is_deterministic(struct fa *fa);
+
+/* Return the initial state */
+struct state *fa_state_initial(struct fa *fa);
+
+/* Return true if this is an accepting state */
+int fa_state_is_accepting(struct state *st);
+
+/* Return the next state; return NULL if there are no more states */
+struct state* fa_state_next(struct state *st);
+
+/* Return the number of transitions for a state */
+uint32_t fa_state_num_trans(struct state *st);
+
+/* Produce details about the i-th transition; return 0 on success, or -1 of there is no such transition */
+int fa_state_trans(struct state *st, uint32_t i, struct state **to, unsigned char *min, unsigned char *max);
 
 #endif
 

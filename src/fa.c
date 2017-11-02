@@ -4566,198 +4566,35 @@ void fa_json(FILE *out, struct fa *fa) {
     }
 }
 
-int fa_export_list(struct fa *fa, struct fa_export *export, char reuse) {
-    int *list_hashes = NULL;
-    void **list_pointers = NULL;
-    int list_size = 100;
-    int num_states = 0;
-    int it;
-    struct fa_export *aux = export;
-
-    list_hashes = (int *)malloc(sizeof(int) * list_size);
-    if (list_hashes == NULL) return -1;
-
-    list_pointers = (void **)malloc(sizeof(void*) * list_size);
-    if (list_pointers == NULL) {
-        free(list_hashes);
-        return -1;
-    }
-
-    // Allocate memory for new states 
-    list_for_each(s, fa->initial) {
-        if (reuse) {
-            if (num_states == list_size - 1){
-                list_size += list_size;
-                list_hashes = realloc(list_hashes, list_size);
-                list_pointers = realloc(list_pointers, list_size);
-            }
-            // Store hash value
-            list_hashes[num_states] = s->hash;
-        }
-        // We use the hashes to map pointers of fa to pointers of fa_export
-        s->hash = num_states;
-
-        if (num_states != 0) list_pointers[num_states++] = (struct fa_export *) malloc(sizeof(struct fa_export));
-        else list_pointers[num_states++] = export;
-
-        // If error, free memory and restore hashes
-        if (list_pointers[num_states-1] == NULL) {
-            for(it = 1; it < num_states; it++) free(list_pointers[it]);
-            free(list_pointers);
-            if (reuse) {
-                it = 0;
-                list_for_each(s1, fa->initial) {
-                     s1->hash = list_hashes[it++];
-                     if (it == num_states) break;
-                }
-            }
-
-            free(list_hashes);
-            return -1;
-        }
-
-    }
-
-    list_for_each(s, fa->initial) {
-        aux->final = s->accept;
-        aux->num_trans = s->tused;
-
-        aux->trans = (struct fa_edge*)malloc(sizeof(struct fa_edge) * s->tused);
-
-        // If error, free memory and restore hashes
-        if (aux->trans == NULL) {
-            if (reuse) {
-                it = 0;
-                list_for_each(s1, fa->initial) {
-                     s1->hash = list_hashes[it++];
-                }
-                free(list_hashes);
-            }
-            for(it = 1; it <= num_states; it++) free(list_pointers[it]);
-            free(list_pointers);
-            return -1;
-        }
-
-        it = 0;
-        for_each_trans(t, s) {
-            aux->trans[it].end = list_pointers[t->to->hash]; 
-            aux->trans[it].min = t->min;
-            aux->trans[it].max = t->max;
-            it++;
-        }
-
-        if (s->next != NULL) {
-            aux->next = list_pointers[s->next->hash];
-            aux = aux->next;
-        } else aux->next = NULL;
-    }
-
-    // Restoring hash values to leave the FA structure untouched
-    if (reuse) {
-        it = 0;
-        list_for_each(s, fa->initial) {
-             s->hash = list_hashes[it++];
-        }
-    }
-
-    free(list_hashes);
-
-    return fa->deterministic ? 1 : 0;
+int fa_is_deterministic(struct fa *fa) {
+    return fa->deterministic;
 }
 
-void fa_export_list_free(struct fa_export *export) {
-    struct fa_export *aux;
-
-    if (export == NULL) return;
-
-    free(export->trans);
-    export = export->next;
-
-    while (export != NULL) {
-        free(export->trans);
-        aux = export->next;
-        free(export);
-        export = aux;
-    }
+struct state *fa_state_initial(struct fa *fa) {
+    return fa->initial;
 }
 
-int fa_export_bytearray(struct fa *fa, char **export, int *final_state, char reuse) {
-    int *list_hashes;
-    int list_size = 100;
-    int num_states = 0;
-    int it, aux, ns_al, fs;
-    char flag = true;
-
-    if (reuse) {
-        list_hashes = (int *)malloc(sizeof(int) * list_size);
-
-        list_for_each(s, fa->initial) {
-        if (num_states == list_size - 1){
-            list_size += list_size;
-            list_hashes = realloc(list_hashes, list_size);
-        }
-        // Store hash value
-        list_hashes[num_states] = s->hash;
-        // We use the hashes to map states to Z_{num_states}
-            s->hash = num_states++;
-            if (flag && s->accept && s->tused == 0) {
-                fs = num_states - 1;
-                flag = false;
-            }
-        }
-    } else {
-        list_for_each(s, fa->initial) {
-        // We use the hashes to map states to Z_{num_states}
-            s->hash = num_states++;
-            if (flag && s->accept && s->tused == 0) {
-                fs = num_states - 1;
-                flag = false;
-            }
-        }
-        if (flag) fs = num_states++;
-    }
-
-    (*export) = (char*)calloc(num_states * num_states * UCHAR_NUM, sizeof(char));
-    if ((*export) == NULL) return -1;
-
-    ns_al = num_states * UCHAR_NUM;
-
-    struct re_str str;
-    MEMZERO(&str, 1);
-    list_for_each(s, fa->initial) {
-        for_each_trans(t, s) {
-            if (t->to->accept) {
-                aux = s->hash * ns_al + fs * UCHAR_NUM;
-                (*export)[aux + t->min] = 1;
-                if (t->min != t->max) {
-                    for (it = t->min + 1; it <= t->max; it++) {
-                        (*export)[aux + it] = 1;
-                    }
-                }
-            }
-            if (t->to->tused != 0 && t->to->hash != fs) {
-                aux = s->hash * ns_al + t->to->hash * UCHAR_NUM;
-                (*export)[aux + t->min] = 1;
-                if (t->min != t->max) {
-                    for (it = t->min + 1; it <= t->max; it++) {
-                        (*export)[aux + it] = 1;
-                    }
-                }
-            }
-        }
-    }
-
-    // Restoring hash values to leave the FA structure untouched
-    if (reuse) {
-    it = 0;
-    list_for_each(s, fa->initial) {
-            s->hash = list_hashes[it++];
-        }
-    }
-
-    *final_state = fs;
-    return num_states;
+int fa_state_is_accepting(struct state *st) {
+    return st->accept;
 }
+
+struct state* fa_state_next(struct state *st) {
+    return st->next;
+}
+
+uint32_t fa_state_num_trans(struct state *st) {
+    return st->tused;
+}
+
+int fa_state_trans(struct state *st, uint32_t i, struct state **to, unsigned char *min, unsigned char *max) {
+    if (st->tused <= i) return -1;
+
+    (*to) = st->trans[i].to;
+    (*min) = st->trans[i].min;
+    (*max) = st->trans[i].max;
+    return 0;
+}
+
 /*
  * Local variables:
  *  indent-tabs-mode: nil
