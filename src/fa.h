@@ -287,16 +287,23 @@ int fa_is_deterministic(struct fa *fa);
 struct state *fa_state_initial(struct fa *fa);
 
 /* Return true if this is an accepting state */
-int fa_state_is_accepting(struct state *st);
+bool fa_state_is_accepting(struct state *st);
 
 /* Return the next state; return NULL if there are no more states */
 struct state* fa_state_next(struct state *st);
 
 /* Return the number of transitions for a state */
-uint32_t fa_state_num_trans(struct state *st);
+size_t fa_state_num_trans(struct state *st);
 
-/* Produce details about the i-th transition; return 0 on success, or -1 of there is no such transition */
-int fa_state_trans(struct state *st, uint32_t i, struct state **to, unsigned char *min, unsigned char *max);
+/* Produce details about the i-th transition.
+ *
+ * On success, *to points to the destination state of the transition and
+ * the interval [min-max] is the label of the transition.
+ *
+ * On failure, *to, min and max are not modified.
+ *
+ * Return 0 on success and -1 otherwise */
+bool fa_state_trans(struct state *st, size_t i, struct state **to, unsigned char *min, unsigned char *max);
 
 #endif
 

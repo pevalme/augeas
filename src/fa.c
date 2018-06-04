@@ -4514,7 +4514,7 @@ void fa_dot(FILE *out, struct fa *fa) {
 }
 
 void fa_json(FILE *out, struct fa *fa) {
-    int *list_hashes;
+    int *list_hashes = NULL;
     int list_size = 100;
     int num_states = 0;
     int it;
@@ -4522,12 +4522,13 @@ void fa_json(FILE *out, struct fa *fa) {
 
     fprintf(out,"{\n\t\"final\": [");
 
-    list_hashes = (int *)malloc(sizeof(int) * list_size);
-
+    F(ALLOC_N(list_hashes, list_size));
+    // list_hashes = (int *)malloc(sizeof(int) * list_size);
     list_for_each(s, fa->initial) {
         if (num_states == list_size - 1){
             list_size += list_size;
-            list_hashes = realloc(list_hashes, list_size);
+            F(REALLOC_N(list_hashes, list_size));
+            // list_hashes = realloc(list_hashes, list_size);
         }
         // Store hash value
         list_hashes[num_states] = s->hash;
@@ -4546,7 +4547,7 @@ void fa_json(FILE *out, struct fa *fa) {
     list_for_each(s, fa->initial) {
         for_each_trans(t, s) {
             if (!first) fprintf(out, ",\n");
-            first = false; 
+            first = false;
             fprintf(out, "\t\t{ \"from\": %ld, \"to\": %ld, \"on\": \"",s->hash, t->to->hash);
             print_char(out, t->min);
             if (t->min != t->max) {
@@ -4559,11 +4560,14 @@ void fa_json(FILE *out, struct fa *fa) {
 
     fprintf(out,"\n\t]\n}");
 
+error:
     // Restoring hash values to leave the FA structure untouched
     it = 0;
     list_for_each(s, fa->initial) {
-         s->hash = list_hashes[it++];
+        if (it == num_states) break;
+        s->hash = list_hashes[it++];
     }
+    free(list_hashes);
 }
 
 int fa_is_deterministic(struct fa *fa) {
@@ -4574,7 +4578,7 @@ struct state *fa_state_initial(struct fa *fa) {
     return fa->initial;
 }
 
-int fa_state_is_accepting(struct state *st) {
+bool fa_state_is_accepting(struct state *st) {
     return st->accept;
 }
 
@@ -4582,11 +4586,11 @@ struct state* fa_state_next(struct state *st) {
     return st->next;
 }
 
-uint32_t fa_state_num_trans(struct state *st) {
+size_t fa_state_num_trans(struct state *st) {
     return st->tused;
 }
 
-int fa_state_trans(struct state *st, uint32_t i, struct state **to, unsigned char *min, unsigned char *max) {
+bool fa_state_trans(struct state *st, size_t i, struct state **to, unsigned char *min, unsigned char *max) {
     if (st->tused <= i) return -1;
 
     (*to) = st->trans[i].to;

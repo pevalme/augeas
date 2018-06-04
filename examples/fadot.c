@@ -221,7 +221,11 @@ int main (int argc, char **argv) {
       fa_json(fd, fa_result);
       fclose(fd);
     } else {
+<<<<<<< HEAD
       fprintf(stderr, "You must specify a file to write in");
+=======
+      fa_json(stdout, fa_result);
+>>>>>>> f983149aaf08ee81d44702f09d83967e84091eaa
     }
 
     return 0;
