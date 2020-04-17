@@ -221,16 +221,12 @@ int main (int argc, char **argv) {
       fa_json(fd, fa_result);
       fclose(fd);
     } else {
-<<<<<<< HEAD
-      fprintf(stderr, "You must specify a file to write in");
-=======
       fa_json(stdout, fa_result);
->>>>>>> f983149aaf08ee81d44702f09d83967e84091eaa
     }
 
     return 0;
 
-  } else if (!strcmp(operation, "print")) { 
+  } else if (!strcmp(operation, "print")) {
     if (nb_regexp != 1) {
       fprintf(stderr,"Please specify one regexp for operation example");
       return 1;
@@ -267,7 +263,7 @@ int main (int argc, char **argv) {
 
     return 0;
 
-  } 
+  }
 
   if (reduce) {
     fa_minimize(fa_result);
